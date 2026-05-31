@@ -20,10 +20,16 @@ create_country = """
 MERGE (c:Country {id: $id, name: $name, year: $year})
 """
 
-# Cypher query to create resource nodes
-create_resource = """
+# Cypher query to create export resource nodes
+create_resource_exports = """
 MATCH (c:Country {id: $exporterId})
-MERGE (c)-[:EXPORTS]->(r:Resource:$($type) {id: $resourceId, type: $type, year: $year, qty: $qty})
+MERGE (c)-[:EXPORTS]->(r:Resource:Export:$($type) {id: $resourceId, type: $type, year: $year, qty: $qty})
+"""
+
+# Cypher query to create import resource nodes
+create_resource_imports = """
+MATCH (c:Country {id: $importerId})
+MERGE (c)<-[:IMPORTS]-(r:Resource:Import:$($type) {id: $resourceId, type: $type, year: $year, qty: $qty})
 """
 
 # Cypher query to create relationships between countries and resources
@@ -40,10 +46,20 @@ def create_countries(country):
         year=country["refYear"],
     )
 
-def create_resources(resource):
+def create_export_resources(resource):
     driver.execute_query(
-        create_resource,
+        create_resource_exports,
         exporterId=resource["reporterCode"],
+        resourceId=resource["resourceId"],
+        type=resource["cmdDesc"],
+        year=resource["refYear"],
+        qty=resource["total_qty"],
+    )
+
+def create_import_resources(resource):
+    driver.execute_query(
+        create_resource_imports,
+        importerId=resource["reporterCode"],
         resourceId=resource["resourceId"],
         type=resource["cmdDesc"],
         year=resource["refYear"],
@@ -84,20 +100,35 @@ unique_countries.apply(create_countries, axis=1)
 # ----------- Load the unique resources into neo4j -----------
 # Make a list of all the unique resources by exporter in the trade_data table
 resource_table_columns = ['refYear', 'reporterCode', 'cmdCode', 'cmdDesc', 'partnerCode', 'qty']
-unique_resources = trade_data.loc[trade_data['flowCode'] == 'X', resource_table_columns].drop_duplicates()
+unique_resource_exports = trade_data.loc[trade_data['flowCode'] == 'X', resource_table_columns].drop_duplicates()
 
 # Calculate the total qty of the resource exported for each country
-unique_resources['total_qty'] = unique_resources.groupby('reporterCode')['qty'].transform('sum')
+unique_resource_exports['total_qty'] = unique_resource_exports.groupby('reporterCode')['qty'].transform('sum')
 
 # Give each resource a unique id based on exporter country
 unique_resource_columns = ['resourceId', 'refYear', 'cmdDesc', 'total_qty']
-unique_resources['resourceId'] = unique_resources['reporterCode'].astype(str) + "_" + unique_resources['cmdCode'].astype(str)
-unique_resources.drop_duplicates(subset=unique_resource_columns, inplace=True)
+unique_resource_exports['resourceId'] = unique_resource_exports['reporterCode'].astype(str) + "_" + unique_resource_exports['cmdCode'].astype(str) + "_X"
+unique_resource_exports.drop_duplicates(subset=unique_resource_columns, inplace=True)
 
 # Load into neo4j
-unique_resources.apply(create_resources, axis=1)
+unique_resource_exports.apply(create_export_resources, axis=1)
 
 # ------------- Load the partner import relationships into neo4j ------------
+# Make a list of all the unique resources by importer in trade_data table
+unique_resource_imports = trade_data.loc[trade_data['flowCode'] == 'M', resource_table_columns].drop_duplicates()
+
+# Calculate the total qty of the resource imported for each country
+unique_resource_imports['total_qty'] = unique_resource_imports.groupby('reporterCode')['qty'].transform('sum')
+
+# Give each resource a unique id based on importer country
+unique_resource_imports['resourceId'] = unique_resource_imports['reporterCode'].astype(str) + "_" + unique_resource_imports['cmdCode'].astype(str) + "_M"
+unique_resource_imports.drop_duplicates(subset=unique_resource_columns, inplace=True)
+
+# Load into neo4j
+unique_resource_imports.apply(create_import_resources, axis=1)
+
+# ------------ Load trade flows between partner countries ---------------
+# TODO
 
 # Close the neo4j driver
 driver.close()
