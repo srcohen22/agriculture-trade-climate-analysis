@@ -33,8 +33,10 @@ MERGE (c)<-[:IMPORTS]-(r:Resource:Import:$($type) {id: $resourceId, type: $type,
 """
 
 # Cypher query to create relationships between countries and resources
-create_import_flows = """
-MERGE (r:Resource {id: $resourceId})-[:IMPORTS {weight: $weight}]->(extC:Country {id: $importerId})
+create_trade_flows = """
+MATCH (export:Resource:Export {id: $exportId})
+MATCH (import:Resource:Import {id: $importId})
+MERGE (export)-[:FLOWS {weight: $weight}]->(import)
 """
 
 # -------- Functions to load data into neo4j --------
@@ -66,12 +68,12 @@ def create_import_resources(resource):
         qty=resource["total_qty"],
     )
 
-def create_import_flows(resourceId, weight, importerId):
+def create_import_flows(trade):
     driver.execute_query(
-        create_import_flows,
-        resourceId,
-        weight,
-        importerId,
+        create_trade_flows,
+        exportId=trade['exportId'],
+        weight=trade['qty'],
+        importId=trade['importId'],
     )
 
 # Useful colums:
@@ -79,15 +81,13 @@ def create_import_flows(resourceId, weight, importerId):
 #   - reporterCode: country code (for id)
 #   - reporterDesc: country name
 #   - flowCode: import/export id
-#   - flowDesc: import/export name
 #   - partnerCode: partner country id
-#   - partnerISO: partner country name
 #   - cmdCode: product code
 #   - cmdDesc: product name
 #   - qtyUnitCode: code for quantity unit
 #   - qtyUnitAbbr: name of quantity unit
 #   - qty: quantity of trade
-useful_columns = ['refYear', 'reporterCode', 'reporterDesc', 'flowCode', 'flowDesc', 'partnerCode', 'partnerISO', 'cmdCode', 'cmdDesc', 'qtyUnitCode', 'qtyUnitAbbr', 'qty']
+useful_columns = ['refYear', 'reporterCode', 'reporterDesc', 'flowCode', 'partnerCode', 'cmdCode', 'cmdDesc', 'qtyUnitCode', 'qtyUnitAbbr', 'qty']
 
 # Load the trade data into a data frame
 trade_data = pd.read_csv('data/TradeData_5_26_2026_19_8_1.csv', encoding='iso-8859-1', index_col=False, usecols=useful_columns)
@@ -128,7 +128,16 @@ unique_resource_imports.drop_duplicates(subset=unique_resource_columns, inplace=
 unique_resource_imports.apply(create_import_resources, axis=1)
 
 # ------------ Load trade flows between partner countries ---------------
-# TODO
+# Get the basic pairs of data for all exporters (we will use export data, maybe in the future look at using reported imports as well)
+trade_partner_columns = ['refYear', 'reporterCode', 'partnerCode', 'qty', 'flowCode', 'cmdCode']
+trade_pairs = trade_data.loc[trade_data['flowCode'] == 'X', trade_partner_columns].drop_duplicates()
+
+# Create the columns for export and import resource ids
+trade_pairs['exportId'] = trade_pairs['reporterCode'].astype(str) + "_" + trade_pairs['cmdCode'].astype(str) + "_X"
+trade_pairs['importId'] = trade_pairs['partnerCode'].astype(str) + "_" + trade_pairs['cmdCode'].astype(str) + "_M"
+
+# Load into neo4j
+trade_pairs.apply(create_import_flows, axis=1)
 
 # Close the neo4j driver
 driver.close()
