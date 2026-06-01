@@ -98,7 +98,7 @@ def create_import_flows(trade):
 useful_columns = ['refYear', 'reporterCode', 'reporterDesc', 'flowCode', 'partnerCode', 'cmdCode', 'cmdDesc', 'primaryValue']
 
 # Load the trade data into a data frame
-trade_data = pd.read_csv('data/MeatTradeData.csv', encoding='iso-8859-1', index_col=False, usecols=useful_columns)
+trade_data = pd.read_csv('data/BulkData1.csv', encoding='iso-8859-1', index_col=False, usecols=useful_columns)
 
 # ---------- Load the country nodes into neo4j ------------
 country_node_columns = ['refYear', 'reporterCode', 'reporterDesc']
@@ -108,7 +108,7 @@ unique_countries.apply(create_countries, axis=1)
 # --------- Load the exports and imports into neo4j ----------
 country_totals = trade_data.loc[trade_data['partnerCode'] == 0].drop_duplicates()
 country_totals['resourceId'] = country_totals['reporterCode'].astype(str) + "_" + country_totals['cmdCode'].astype(str) + "_" + country_totals['flowCode'].astype(str)
-country_totals['resourceTag'] = country_totals['cmdDesc'].str.split().str[0]
+country_totals['resourceTag'] = country_totals['cmdDesc'].str.extract(r'([A-Za-z]+)')
 country_totals.apply(create_resources, axis=1)
 
 # ------------ Load trade flows between partner countries into neo4j ---------------
