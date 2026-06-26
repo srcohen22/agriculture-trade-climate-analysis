@@ -98,7 +98,7 @@ def create_import_flows(trade):
 useful_columns = ['refYear', 'reporterCode', 'reporterDesc', 'flowCode', 'partnerCode', 'cmdCode', 'cmdDesc', 'primaryValue']
 
 # Load the trade data into a data frame
-trade_data = pd.read_csv('data/BulkData1.csv', encoding='iso-8859-1', index_col=False, usecols=useful_columns)
+trade_data = pd.read_csv('data/StapleCropTradeData2025.csv', encoding='iso-8859-1', index_col=False, usecols=useful_columns)
 
 # ---------- Load the country nodes into neo4j ------------
 country_node_columns = ['refYear', 'reporterCode', 'reporterDesc']
