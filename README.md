@@ -38,6 +38,14 @@ This format lends itself naturally to answering questions such as:
 
 ## Graph Model
 
+There are three major things we are modeling in this database:
+- Crop Yield
+- Natural Disasters
+- Agriculture Trade
+
+The following diagram shows how country information would be modeled.
+![Example Model](/assets/AgricultureModelDiagram.png)
+
 ### Core Nodes
 
 - Country
@@ -48,7 +56,15 @@ This format lends itself naturally to answering questions such as:
 
 ### Relationships
 
-TODO
+- Country GROWS Resource
+- Country IMPACTED_BY Disater
+- Country EXPORTS Export
+- Export TRADES Import
+- Country IMPORTS Import
+
+### Historical Modeling
+
+Additionally, all of the information explained above has an additional dimension: time. Each of these nodes are labeled with the year it represents, and connected to the previous year's data with the PREV relationship. This way, it is trivial to get all the information relating to a single country over as many years as we desire. See the following diagram for an example:
 
 ### Example Queries
 
