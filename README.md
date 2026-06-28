@@ -44,7 +44,7 @@ There are three major things we are modeling in this database:
 - Agriculture Trade
 
 The following diagram shows how country information would be modeled.
-![Example Model](/assets/AgricultureModelDiagram.png)
+![Agriculture Model Diagram](/assets/AgricultureModelDiagram.png)
 
 ### Core Nodes
 
@@ -65,6 +65,8 @@ The following diagram shows how country information would be modeled.
 ### Historical Modeling
 
 Additionally, all of the information explained above has an additional dimension: time. Each of these nodes are labeled with the year it represents, and connected to the previous year's data with the PREV relationship. This way, it is trivial to get all the information relating to a single country over as many years as we desire. See the following diagram for an example:
+
+![Historical Agriculture Diagram](/assets/HistoricalAgricultureDiagram.png)
 
 ### Example Queries
 
