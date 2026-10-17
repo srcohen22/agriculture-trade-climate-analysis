@@ -1,3 +1,6 @@
+# Add PHONY targets
+.PHONY: neo4j init load-trade-data
+
 # install and run neo4j container
 neo4j:
 	docker run \
