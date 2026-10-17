@@ -1,48 +1,14 @@
 # Load environment variables for neo4j connection and pandas library for data handling
-import os
 from dotenv import load_dotenv
 load_dotenv()
 import pandas as pd
-from neo4j import GraphDatabase
-
-# Initialize neo4j driver
-driver = GraphDatabase.driver(
-    os.getenv('NEO4J_URI'),
-    auth=(
-        os.getenv('NEO4J_USERNAME'), 
-        os.getenv('NEO4J_PASSWORD')
-    )
-)
-
-# --------- Cypher queries to load data into neo4j ----------
-# Cypher query to create country nodes
-create_country = """
-MERGE (c:Country {id: $id, name: $name, year: $year})
-"""
-
-# Cypher query to create export resource nodes
-create_resource_exports = """
-MATCH (c:Country {id: $exporterId})
-MERGE (c)-[:EXPORTS]->(r:Resource:Export:$($resourceTag) {id: $resourceId, type: $type, year: $year, qty: $qty})
-"""
-
-# Cypher query to create import resource nodes
-create_resource_imports = """
-MATCH (c:Country {id: $importerId})
-MERGE (c)<-[:IMPORTS]-(r:Resource:Import:$($resourceTag) {id: $resourceId, type: $type, year: $year, qty: $qty})
-"""
-
-# Cypher query to create relationships between countries and resources
-create_trade_flows = """
-MATCH (export:Resource:Export {id: $exportId})
-MATCH (import:Resource:Import {id: $importId})
-MERGE (export)-[:FLOWS {weight: $weight}]->(import)
-"""
+import neo4j_utils.neo4j_config as neo4j_config
+import neo4j_utils.data_import_cypher as import_cypher
 
 # -------- Functions to load data into neo4j --------
 def create_countries(country):
     driver.execute_query(
-        create_country,
+        import_cypher.create_country,
         id=country["reporterCode"],
         name=country["reporterDesc"],
         year=country["refYear"],
@@ -58,7 +24,7 @@ def create_resources(resource):
 
 def create_export_resources(resource):
     driver.execute_query(
-        create_resource_exports,
+        import_cypher.create_resource_exports,
         exporterId=resource["reporterCode"],
         resourceId=resource["resourceId"],
         resourceTag=resource["resourceTag"],
@@ -69,7 +35,7 @@ def create_export_resources(resource):
 
 def create_import_resources(resource):
     driver.execute_query(
-        create_resource_imports,
+        import_cypher.create_resource_imports,
         importerId=resource["reporterCode"],
         resourceId=resource["resourceId"],
         resourceTag=resource["resourceTag"],
@@ -80,11 +46,14 @@ def create_import_resources(resource):
 
 def create_import_flows(trade):
     driver.execute_query(
-        create_trade_flows,
+        import_cypher.create_trade_flows,
         exportId=trade['exportId'],
         weight=trade['primaryValue'],
         importId=trade['importId'],
     )
+
+# Open Neo4j Driver
+driver = neo4j_config.open_driver()
 
 # Useful colums:
 #   - refPeriodId: year for data
@@ -122,4 +91,4 @@ trade_pairs['importId'] = trade_pairs['partnerCode'].astype(str) + "_" + trade_p
 trade_pairs.apply(create_import_flows, axis=1)
 
 # Close the neo4j driver
-driver.close()
+neo4j_config.close_driver(driver)

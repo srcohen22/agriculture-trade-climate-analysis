@@ -14,4 +14,4 @@ init:
 
 # load trade data into neo4j, this would only need to be done once per file
 load-trade-data:
-	python3 scripts/process_trade_data.py
+	python3 -m scripts.process_trade_data
