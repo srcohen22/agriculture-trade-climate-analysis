@@ -1,3 +1,6 @@
+# Add PHONY targets
+.PHONY: neo4j init load-trade-data
+
 # install and run neo4j container
 neo4j:
 	docker run \
@@ -11,4 +14,4 @@ init:
 
 # load trade data into neo4j, this would only need to be done once per file
 load-trade-data:
-	python3 scripts/process_trade_data.py
+	python3 -m scripts.process_trade_data
